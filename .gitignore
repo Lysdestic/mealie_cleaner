@@ -18,4 +18,4 @@ __pycache__/
 # Audit output files
 audit.txt
 food_audit.txt
-*.audit.txt
+*.audit.txtenv.example
