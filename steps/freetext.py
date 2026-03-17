@@ -18,7 +18,7 @@ from __future__ import annotations
 import sys
 import time
 
-from core import req, get_all, dry_run_banner, is_dry_run, summary
+from core import req, get_all, dry_run_banner, is_dry_run, summary, color
 from data import FREETEXT_SKIP_SLUGS
 
 # SKIP_SLUGS is loaded from userdata/recipe_map.json ("freetext_skip_slugs" key)
@@ -125,7 +125,7 @@ def _parse_text(text: str) -> dict | None:
 
 
 def step_freetext() -> None:
-    print("\n▶ STEP 6: FIX FREE-TEXT INGREDIENTS\n")
+    print(f"\n{color.header('▶ STEP 6: FIX FREE-TEXT INGREDIENTS')}\n")
     if is_dry_run():
         dry_run_banner()
 
@@ -137,7 +137,7 @@ def step_freetext() -> None:
         slug  = recipe["slug"]
 
         if slug in SKIP_SLUGS:
-            print(f"  SKIPPED: {title}  (ingredient format not parser-compatible)")
+            print(f"  {color.muted('SKIPPED:')} {color.muted(title)}  {color.muted('(ingredient format not parser-compatible)')}")
             continue
 
         try:
@@ -182,7 +182,7 @@ def step_freetext() -> None:
             note_parsed = parsed_ing.get("note", "")
 
             if not food:
-                print(f"    NO FOOD PARSED: {text!r}")
+                print(f"    {color.warn('NO FOOD PARSED:')} {repr(text)}")
                 total_skipped += 1
                 continue
 
@@ -225,18 +225,18 @@ def step_freetext() -> None:
         if changed and not is_dry_run():
             try:
                 req("PATCH", f"/api/recipes/{slug}", {"recipeIngredient": updated_ings})
-                print(f"    ✓ patched")
+                print(f"    {color.ok('✓ patched')}")
             except Exception as e:
                 print(f"    ✗ ERROR patching {title}: {e}", file=sys.stderr)
                 total_errors += 1
 
         time.sleep(0.1)
 
-    print(f"\n✓ Free-text fix complete.")
-    print(f"  Fixed            : {total_fixed}")
-    print(f"  Skipped          : {total_skipped}  (headers, garnishes, optionals)")
-    print(f"  Already had food : {total_ok}")
-    print(f"  Errors           : {total_errors}")
+    print(f"\n{color.ok('✓')} {color.bold('Free-text fix complete.')}")
+    print(f"  Fixed            : {color.ok(str(total_fixed))}")
+    print(f"  Skipped          : {color.muted(str(total_skipped))}  (headers, garnishes, optionals)")
+    print(f"  Already had food : {color.muted(str(total_ok))}")
+    print(f"  Errors           : {color.error(str(total_errors)) if total_errors else color.muted('0')}")
     summary.add("freetext", f"Total: {total_fixed} fixed, {total_skipped} skipped, {total_errors} errors")
     if SKIP_SLUGS:
         print()

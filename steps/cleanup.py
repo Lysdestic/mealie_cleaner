@@ -14,7 +14,7 @@ import json
 import os
 import sys
 
-from core import req, get_all, normalize, dry_run_banner, is_dry_run
+from core import req, get_all, normalize, dry_run_banner, is_dry_run, summary, color
 
 # Path to taxonomy.json
 _ROOT         = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -49,7 +49,7 @@ def _prompt_decision(name: str, kind: str) -> str:
 
 
 def step_cleanup() -> None:
-    print("\n▶ STEP 2: TAG & CATEGORY CLEANUP\n")
+    print(f"\n{color.header('▶ STEP 2: TAG & CATEGORY CLEANUP')}\n")
     if is_dry_run():
         dry_run_banner()
 
@@ -84,27 +84,27 @@ def step_cleanup() -> None:
             if kept_cats:
                 print(f"    Categories: {sorted(kept_cats)}")
 
-    print("\n✓ Cleanup complete.")
+    print(f"\n{color.ok('✓')} {color.bold('Cleanup complete.')}")
 
 
 def _cleanup_categories() -> list[str]:
     """Returns list of category names the user chose to keep."""
     from data import KEEP_CATEGORIES
 
-    print("\n── Categories ──")
+    print(f"\n{color.bold('── Categories ──')}")
     all_cats  = get_all("/api/organizers/categories")
     keep_norm = {normalize(c) for c in KEEP_CATEGORIES}
     to_delete = [c for c in all_cats if normalize(c["name"]) not in keep_norm]
     to_keep   = [c for c in all_cats if normalize(c["name"]) in keep_norm]
 
-    print(f"Found {len(all_cats)} categories.")
-    print(f"Canonical ({len(to_keep)}): {sorted(c['name'] for c in to_keep)}")
+    print(f"  Found {color.info(str(len(all_cats)))} categories.")
+    print(f"  {color.ok('Canonical')} ({len(to_keep)}): {color.muted(str(sorted(c['name'] for c in to_keep)))}")
 
     if not to_delete:
-        print("No non-canonical categories found.")
+        print(f"  {color.ok('No non-canonical categories found.')}")
         return []
 
-    print(f"\n{len(to_delete)} non-canonical category/categories found.")
+    print(f"\n  {color.warn(str(len(to_delete)))} non-canonical category/categories found.")
 
     kept = []
     deleted = errors = skipped = 0
@@ -117,22 +117,23 @@ def _cleanup_categories() -> list[str]:
         decision = _prompt_decision(cat["name"], "category")
 
         if decision == "keep":
-            print(f"    → Will add {cat['name']!r} to taxonomy.json")
+            print(f"    {color.ok('→')} Will add {color.bright_cyan(repr(cat['name']))} to taxonomy.json")
             kept.append(cat["name"])
+            summary.add("cleanup", f"Category kept → added to taxonomy.json: {cat['name']!r}")
         elif decision == "delete":
             try:
                 req("DELETE", f"/api/organizers/categories/{cat['id']}")
-                print(f"    → Deleted {cat['name']!r}")
+                print(f"    {color.warn('→')} Deleted {color.muted(repr(cat['name']))}")
                 deleted += 1
+                summary.add("cleanup", f"Category deleted: {cat['name']!r}")
             except Exception as e:
                 print(f"    → ERROR deleting {cat['name']!r}: {e}", file=sys.stderr)
                 errors += 1
         else:
-            print(f"    → Skipped {cat['name']!r}")
+            print(f"    {color.muted('→ Skipped')} {repr(cat['name'])}")
             skipped += 1
 
-    print(f"\n  Categories — kept: {len(kept)}  deleted: {deleted}  "
-          f"skipped: {skipped}  errors: {errors}")
+    print(f"\n  Categories — kept: {color.ok(str(len(kept)))}  deleted: {color.warn(str(deleted))}  skipped: {color.muted(str(skipped))}  errors: {color.error(str(errors)) if errors else '0'}")
     return kept
 
 
@@ -140,20 +141,20 @@ def _cleanup_tags() -> list[str]:
     """Returns list of tag names the user chose to keep."""
     from data import CANONICAL_TAGS
 
-    print("\n── Tags ──")
+    print(f"\n{color.bold('── Tags ──')}")
     all_tags       = get_all("/api/organizers/tags")
     keep_norm_tags = {normalize(t) for t in CANONICAL_TAGS}
     to_delete      = [t for t in all_tags if normalize(t["name"]) not in keep_norm_tags]
     to_keep        = [t for t in all_tags if normalize(t["name"]) in keep_norm_tags]
 
-    print(f"Found {len(all_tags)} tags.")
-    print(f"Keeping {len(to_keep)} canonical tags.")
+    print(f"  Found {color.info(str(len(all_tags)))} tags.")
+    print(f"  Keeping {color.ok(str(len(to_keep)))} canonical tags.")
 
     if not to_delete:
-        print("No non-canonical tags found.")
+        print(f"  {color.ok('No non-canonical tags found.')}")
         return []
 
-    print(f"\n{len(to_delete)} non-canonical tag(s) found.")
+    print(f"\n  {color.warn(str(len(to_delete)))} non-canonical tag(s) found.")
 
     kept = []
     deleted = errors = skipped = 0
@@ -166,20 +167,21 @@ def _cleanup_tags() -> list[str]:
         decision = _prompt_decision(tag["name"], "tag")
 
         if decision == "keep":
-            print(f"    → Will add {tag['name']!r} to taxonomy.json")
+            print(f"    {color.ok('→')} Will add {color.bright_cyan(repr(tag['name']))} to taxonomy.json")
             kept.append(tag["name"])
+            summary.add("cleanup", f"Tag kept → added to taxonomy.json: {tag['name']!r}")
         elif decision == "delete":
             try:
                 req("DELETE", f"/api/organizers/tags/{tag['id']}")
-                print(f"    → Deleted {tag['name']!r}")
+                print(f"    {color.warn('→')} Deleted {color.muted(repr(tag['name']))}")
                 deleted += 1
+                summary.add("cleanup", f"Tag deleted: {tag['name']!r}")
             except Exception as e:
                 print(f"    → ERROR deleting {tag['name']!r}: {e}", file=sys.stderr)
                 errors += 1
         else:
-            print(f"    → Skipped {tag['name']!r}")
+            print(f"    {color.muted('→ Skipped')} {repr(tag['name'])}")
             skipped += 1
 
-    print(f"\n  Tags — kept: {len(kept)}  deleted: {deleted}  "
-          f"skipped: {skipped}  errors: {errors}")
+    print(f"\n  Tags — kept: {color.ok(str(len(kept)))}  deleted: {color.warn(str(deleted))}  skipped: {color.muted(str(skipped))}  errors: {color.error(str(errors)) if errors else '0'}")
     return kept

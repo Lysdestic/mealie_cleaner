@@ -144,7 +144,7 @@ def _ensure_tags(needed: set[str], tag_lookup: dict, tag_by_slug: dict) -> None:
             if new_tag and new_tag.get("id"):
                 tag_lookup[new_tag["name"]] = new_tag
                 tag_by_slug[normalize_slug(new_tag["name"])] = new_tag
-                print(f"  created tag: {name!r}")
+                print(f"  {color.ok('created tag:')} {name!r}")
                 created += 1
                 summary.add("apply", f"Tag created in Mealie: {name!r}")
         except Exception as e:
@@ -167,7 +167,7 @@ def _ensure_categories(needed: set[str], cat_lookup: dict, cat_by_slug: dict) ->
             if new_cat and new_cat.get("id"):
                 cat_lookup[new_cat["name"]] = new_cat
                 cat_by_slug[normalize_slug(new_cat["name"])] = new_cat
-                print(f"  created category: {name!r}")
+                print(f"  {color.ok('created category:')} {name!r}")
                 created += 1
                 summary.add("apply", f"Category created in Mealie: {name!r}")
         except Exception as e:
@@ -177,7 +177,7 @@ def _ensure_categories(needed: set[str], cat_lookup: dict, cat_by_slug: dict) ->
 
 
 def step_apply() -> None:
-    print("\n▶ STEP 3: APPLY TAG & CATEGORY MAP\n")
+    print(f"\n{color.header('▶ STEP 3: APPLY TAG & CATEGORY MAP')}\n")
     if is_dry_run():
         dry_run_banner()
 
@@ -218,10 +218,10 @@ def step_apply() -> None:
                     if not cat_lookup.get(n) and not cat_by_slug.get(normalize_slug(n))}
 
     if missing_tags:
-        print(f"  Creating {len(missing_tags)} missing tag(s):")
+        print(f"  {color.yellow(f'Creating {len(missing_tags)} missing tag(s):')}")
         _ensure_tags(missing_tags, tag_lookup, tag_by_slug)
     if missing_cats:
-        print(f"  Creating {len(missing_cats)} missing category/categories:")
+        print(f"  {color.yellow(f'Creating {len(missing_cats)} missing category/categories:')}")
         _ensure_categories(missing_cats, cat_lookup, cat_by_slug)
 
     def resolve_tag(name: str) -> dict | None:
@@ -303,11 +303,11 @@ def step_apply() -> None:
                 "tags": tag_payload,
                 "recipeCategory": cat_payload,
             })
-            print(f"  ✓ {title}")
+            print(f"  {color.ok('✓')} {title}")
             updated += 1
             summary.add("apply", f"Recipe updated: {title}")
         except Exception as e:
-            print(f"  ✗ {title}: {e}", file=sys.stderr)
+            print(f"  {color.error('✗')} {title}: {e}", file=sys.stderr)
             errors += 1
 
     # Write any map updates back to recipe_map.json
@@ -325,9 +325,9 @@ def step_apply() -> None:
         except Exception as e:
             print(f"  WARNING: could not update recipe_map.json: {e}", file=sys.stderr)
 
-    print(f"\n✓ Apply complete.")
-    print(f"  Updated : {updated}")
-    print(f"  Errors  : {errors}")
+    print(f"\n{color.ok('✓')} {color.bold('Apply complete.')}")
+    print(f"  Updated : {color.ok(str(updated))}")
+    print(f"  Errors  : {color.error(str(errors)) if errors else color.muted('0')}")
     summary.add("apply", f"Total: {updated} updated, {errors} errors")
     if not_in_map and not is_dry_run():
         _prompt_recipe_map(not_in_map)

@@ -14,7 +14,7 @@ import os
 import re
 import sys
 
-from core import req, get_all, dry_run_banner, is_dry_run, summary
+from core import req, get_all, dry_run_banner, is_dry_run, summary, color
 from data import FOOD_LABELS, JUNK_FOOD_IDS, JUNK_FOOD_PATTERNS
 
 _ROOT        = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -138,7 +138,7 @@ def _is_junk(name: str) -> bool:
 
 
 def step_foods() -> None:
-    print("\n▶ STEP 5: FOOD LABEL CLEANUP\n")
+    print(f"\n{color.header('▶ STEP 5: FOOD LABEL CLEANUP')}\n")
     if is_dry_run():
         dry_run_banner()
 
@@ -150,10 +150,10 @@ def step_foods() -> None:
         print(f"WARNING: label names not found in Mealie: {bad}", file=sys.stderr)
 
     all_foods = get_all("/api/foods")
-    print(f"Found {len(all_foods)} foods.")
+    print(f"  Found {color.info(str(len(all_foods)))} foods.")
 
     # ── Delete junk ──────────────────────────────────────────────
-    print("\n── Deleting junk entries ──")
+    print(f"\n{color.bold('── Deleting junk entries ──')}")
     junk_ids = set(JUNK_FOOD_IDS)
     deleted = del_errors = 0
 
@@ -168,17 +168,17 @@ def step_foods() -> None:
         else:
             try:
                 req("DELETE", f"/api/foods/{food['id']}")
-                print(f"  deleted: {display}")
+                print(f"  {color.warn('deleted:')} {display}")
                 deleted += 1
                 summary.add("foods", f"Junk food deleted: {display}")
             except Exception as e:
                 print(f"  ERROR: {display}: {e}", file=sys.stderr)
                 del_errors += 1
 
-    print(f"  => {deleted} deleted, {del_errors} errors")
+    print(f"  => {color.warn(str(deleted)) if deleted else color.muted('0')} deleted, {color.error(str(del_errors)) if del_errors else color.muted('0')} errors")
 
     # ── Label unlabeled ──────────────────────────────────────────
-    print("\n── Labeling unlabeled foods ──")
+    print(f"\n{color.bold('── Labeling unlabeled foods ──')}")
     food_labels_lower = {k.lower(): v for k, v in FOOD_LABELS.items()}
     labeled = already_labeled = no_mapping = label_errors = 0
     unmapped_names: list[str] = []
@@ -195,7 +195,7 @@ def step_foods() -> None:
         if not label_name:
             no_mapping += 1
             unmapped_names.append(name)
-            print(f"  NO MAPPING: {name!r}")
+            print(f"  {color.warn('NO MAPPING:')} {color.muted(repr(name))}")
             continue
 
         label_obj = label_lookup.get(label_name)
@@ -218,7 +218,7 @@ def step_foods() -> None:
                 "labelId":     label_obj["id"],
                 "aliases":     food.get("aliases", []),
             })
-            print(f"  ✓ {name!r}  ->  {label_name}")
+            print(f"  {color.ok('✓')} {repr(name)}  {color.muted('→')}  {color.bright_cyan(label_name)}")
             labeled += 1
             summary.add("foods", f"Food labeled: {name!r} → {label_name}")
         except Exception as e:
@@ -228,7 +228,7 @@ def step_foods() -> None:
     if unmapped_names and not is_dry_run():
         _prompt_food_labels(unmapped_names)
 
-    print(f"\n✓ Foods complete.")
+    print(f"\n{color.ok('✓')} {color.bold('Foods complete.')}")
     print(f"  Deleted          : {deleted}")
     print(f"  Labeled          : {labeled}")
     print(f"  Already labeled  : {already_labeled}")
