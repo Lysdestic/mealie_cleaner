@@ -19,6 +19,31 @@ If you self-host Mealie and have more than a handful of recipes, you've probably
 
 ---
 
+## Features
+
+### Setup & Organisation
+- **Recipe audit** — dumps all recipes with tags, categories, ingredients, and instructions to stdout; pipe to a file and paste into an LLM to review your tagging scheme in bulk
+- **Tag & category cleanup** — finds anything in Mealie not in your canonical list and asks per-item: keep it (written to `taxonomy.json` automatically), delete it, or skip
+- **Tag & category apply** — pushes a curated tag/category map to all recipes; missing organizers are auto-created; tags already on recipes are preserved (merge, not replace); `recipe_map.json` is auto-synced to reflect reality
+- **Tag → category sync** — Mealie has two separate filter systems (Tags and Categories); this keeps them in sync so both work correctly
+
+### Shopping & Ingredients
+- **Food label cleanup** — labels unlabeled foods via a numbered menu (no typing), creates new labels on the spot, deletes junk entries, saves everything back to `food_labels.json` automatically
+- **Free-text ingredient repair** — recipes imported from the web often have plain-text ingredients with no structured food link; this runs them through Mealie's parser so they appear in shopping lists
+
+### Enrichment
+- **LLM recipe enrichment** — audits every recipe against a quality standard and walks you through improving any that fall short, one at a time, using any LLM (Claude, GPT, etc.); automatically re-evaluates nutrition tag rules after each recipe is enriched
+- **Nutrition tag rules** — define threshold-based rules (e.g. protein ≥ 20g → "High Protein") that auto-tag recipes; rules persist across runs; recipes that lose qualification are flagged for review rather than silently un-tagged
+
+### General
+- **Session summary** — printed at the end of every run showing every action taken; no need to scroll back
+- **Graceful Ctrl+C** — prints the summary of completed actions and exits cleanly; no tracebacks
+- **Dry run mode** — any step can be previewed with `--dry-run` before touching anything
+- **Dynamic recipe URLs** — group slug fetched from your Mealie API on startup so recipe links always point to the right place
+- **No external dependencies** — stdlib only; no pip install needed
+
+---
+
 ## Requirements
 
 - Python 3.10+ (stdlib only — no pip install needed)
@@ -99,6 +124,17 @@ python3 mealie_suite.py --step enrich
 Step 9 (run all) handles organisation, labels, ingredients, and nutrition tags automatically. It deliberately excludes audit and LLM enrichment since those require you at the keyboard.
 
 > ⚠️ Step 2 (cleanup) will **delete** any tag or category in Mealie not listed in `userdata/taxonomy.json`. Always add new tags there before running cleanup.
+
+### Bulk tag review workflow
+
+When you add a batch of new recipes and want to review their tagging scheme from scratch:
+
+1. `python3 mealie_suite.py --step audit > userdata/audit.txt`
+2. Paste `audit.txt` into an LLM — ask it to review tags and categories for all recipes
+3. If new tags or categories are suggested, add them to `userdata/taxonomy.json`
+4. Add the new slug entries the LLM suggests to `userdata/recipe_map.json`
+5. Run step 3 — missing tags and categories are created in Mealie automatically
+6. Run step 2 (cleanup) to remove anything no longer needed
 
 ---
 
