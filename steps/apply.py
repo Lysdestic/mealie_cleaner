@@ -17,7 +17,7 @@ import sys
 import json
 import os
 
-from core import req, get_all, normalize_slug, dry_run_banner, is_dry_run, summary
+from core import req, get_all, normalize_slug, dry_run_banner, is_dry_run, summary, get_recipe_url, color as _color
 from data import RECIPE_MAP, CANONICAL_TAGS, KEEP_CATEGORIES
 
 _ROOT        = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -98,7 +98,9 @@ def _prompt_recipe_map(stubs: list[tuple[str, str]]) -> None:
         except Exception:
             pass
 
-        print(f"  {color.bold(color.bright_cyan('──'))} {color.bold(title)}  {color.muted(f'({slug})')}")
+        url = get_recipe_url(slug)
+        print(f"  {color.bold(color.bright_cyan('──'))} {color.bold(title)}")
+        print(f"     {color.link(url)}")
         if current_tags:
             print(f"     {color.label('Current tags')}      : {color.muted(str(current_tags))}")
         if current_cats:

@@ -55,7 +55,7 @@ from __future__ import annotations
 import argparse
 import sys
 
-from core.config import load_env, check_env, set_dry_run, is_dry_run
+from core.config import load_env, check_env, set_dry_run, is_dry_run, set_group_slug
 from core.utils  import confirm
 from core        import color
 from core.summary import summary
@@ -216,15 +216,29 @@ Step names: audit, cleanup, apply, sync, foods, freetext, enrich, all
     set_dry_run(args.dry_run)
     check_env()
 
-    if args.step:
-        if args.step == "all":
-            run_all()
+    # Fetch group slug so recipe URLs are correct for this instance
+    try:
+        from core.api import req as _req
+        user = _req("GET", "/api/users/self")
+        slug = user.get("groupSlug") or "home"
+        set_group_slug(slug)
+    except Exception:
+        pass  # falls back to "home"
+
+    try:
+        if args.step:
+            if args.step == "all":
+                run_all()
+            else:
+                _, fn = STEPS[args.step]
+                fn()
+                summary.print()
         else:
-            _, fn = STEPS[args.step]
-            fn()
-            summary.print()
-    else:
-        interactive_menu()
+            interactive_menu()
+    except KeyboardInterrupt:
+        print(f"\n\n  {color.warn('Interrupted.')}  Printing summary of completed actions...")
+        summary.print()
+        print(f"  {color.muted('Exiting.')}")
 
 
 if __name__ == "__main__":

@@ -9,9 +9,10 @@ from __future__ import annotations
 import os
 import sys
 
-_MEALIE_URL: str = ""
-_TOKEN: str = ""
-_DRY_RUN: bool = False
+_MEALIE_URL: str  = ""
+_TOKEN: str       = ""
+_DRY_RUN: bool    = False
+_GROUP_SLUG: str  = "home"  # default; overridden after first API call
 
 
 def load_env() -> None:
@@ -58,6 +59,20 @@ def get_url() -> str:
 
 def get_token() -> str:
     return _TOKEN
+
+
+def get_group_slug() -> str:
+    return _GROUP_SLUG
+
+
+def set_group_slug(slug: str) -> None:
+    global _GROUP_SLUG
+    _GROUP_SLUG = slug
+
+
+def get_recipe_url(slug: str) -> str:
+    """Return the full Mealie URL for a recipe, using the correct group slug."""
+    return f"{_MEALIE_URL}/g/{_GROUP_SLUG}/r/{slug}"
 
 
 def is_dry_run() -> bool:

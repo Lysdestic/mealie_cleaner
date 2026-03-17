@@ -45,7 +45,7 @@ import json
 import re
 import sys
 
-from core import req, get_all, get_url, color, summary
+from core import req, get_all, get_url, get_recipe_url, color, summary
 
 
 # ══════════════════════════════════════════════════════════════════
@@ -555,7 +555,7 @@ def _parse_response(raw: str) -> dict | None:
 # ══════════════════════════════════════════════════════════════════
 
 def _recipe_url(slug: str) -> str:
-    return f"{get_url()}/g/home/r/{slug}"
+    return get_recipe_url(slug)
 
 
 def step_enrich() -> None:
