@@ -80,7 +80,7 @@ python3 mealie_suite.py --step enrich
 python3 mealie_suite.py --step all
 
 # Dump all recipes for LLM review
-python3 mealie_suite.py --step audit > audit.txt
+python3 mealie_suite.py --step audit > userdata/audit.txt
 ```
 
 The menu looks like this:
@@ -211,7 +211,7 @@ The Freezer tag in Mealie is managed automatically — added when the LLM confir
 
 When you add a batch of new recipes and want to review their tagging scheme:
 
-1. `python3 mealie_suite.py --step audit > audit.txt`
+1. `python3 mealie_suite.py --step audit > userdata/audit.txt`
 2. Paste `audit.txt` into an LLM and ask it to review tags and categories
 3. If new tags or categories are suggested, add them to `userdata/taxonomy.json`
 4. Paste the resulting recipe map into `userdata/recipe_map.json`

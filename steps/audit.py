@@ -16,7 +16,7 @@ from core import req, get_all, fail
 
 def step_audit() -> None:
     print("\n▶ STEP 1: RECIPE AUDIT\n")
-    print("Tip: pipe output to a file:  python3 mealie_suite.py --step audit > audit.txt")
+    print("Tip: pipe output to a file:  python3 mealie_suite.py --step audit > userdata/audit.txt")
     print("Then paste into Claude and ask it to review tags/categories.\n")
 
     recipes = get_all("/api/recipes")
@@ -74,4 +74,4 @@ def step_audit() -> None:
 
     print("# END OF AUDIT")
     print(f"\n✓ {len(recipes_sorted)} recipes listed.")
-    print("  Paste into Claude → ask it to review tags/categories → use output to update data/recipe_map.py")
+    print("  Paste into Claude → ask it to review tags/categories → use output to update userdata/recipe_map.json")

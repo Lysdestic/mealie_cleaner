@@ -27,7 +27,7 @@ EDITING THE DATA
 
 LLM WORKFLOW
 ────────────
-  python3 mealie_suite.py --step audit > audit.txt
+  python3 mealie_suite.py --step audit > userdata/audit.txt
   # paste audit.txt into Claude, ask for tag/category review
   # update userdata/recipe_map.json with the results
   python3 mealie_suite.py --step apply
@@ -129,7 +129,7 @@ def interactive_menu() -> None:
     print(f"\n  {color.bold('── Utilities ────────────────────────────────────────────')}")
     print(f"  {color.cyan('[1]')} {STEPS['audit'][0]}")
     print(f"  {color.muted('       Use when adding recipes in bulk or revisiting your tagging scheme:')}")
-    print(f"  {color.muted('       1. python3 mealie_suite.py --step audit > audit.txt')}")
+    print(f"  {color.muted('       1. python3 mealie_suite.py --step audit > userdata/audit.txt')}")
     print(f"  {color.muted('       2. Paste audit.txt into Claude — ask it to review tags/categories')}")
     print(f"  {color.muted('       3. If Claude suggests new tags/categories, add them to userdata/taxonomy.json')}")
     print(f"  {color.muted('       4. Paste the resulting RECIPE_MAP into userdata/recipe_map.json')}")
@@ -193,7 +193,7 @@ def main() -> None:
 Examples:
   python3 mealie_suite.py                          interactive menu
   python3 mealie_suite.py --dry-run                preview mode
-  python3 mealie_suite.py --step audit > audit.txt dump recipes for LLM
+  python3 mealie_suite.py --step audit > userdata/audit.txt dump recipes for LLM
   python3 mealie_suite.py --step cleanup --dry-run preview cleanup
   python3 mealie_suite.py --step apply             apply tag map
   python3 mealie_suite.py --step enrich            LLM enrichment session

@@ -15,7 +15,7 @@ __pycache__/
 *.pyc
 *.pyo
 
-# Audit output files
-audit.txt
-food_audit.txt
-*.audit.txtenv.example
+# Audit output files (written to userdata/ — already gitignored via userdata/)
+# If you write them elsewhere, add them here:
+# audit.txt
+# *.audit.txt
