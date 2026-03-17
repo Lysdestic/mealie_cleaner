@@ -558,6 +558,18 @@ def _recipe_url(slug: str) -> str:
     return get_recipe_url(slug)
 
 
+def _recheck_nutrition_tags(slug: str, title: str) -> None:
+    """Re-evaluate nutrition tag rules for a single recipe after enrichment."""
+    try:
+        from data import NUTRITION_RULES
+        if not NUTRITION_RULES:
+            return
+        from steps.nutrition_tags import _run_rules_for_recipe
+        _run_rules_for_recipe(slug, title, NUTRITION_RULES)
+    except Exception:
+        pass  # nutrition tag step is optional — never block enrichment
+
+
 def step_enrich() -> None:
     print(f"\n{color.header('▶ STEP 7: RECIPE QUALITY AUDIT & ENRICHMENT')}\n")
     print(f"  {color.muted('Audits every recipe against the quality standard.')}")
@@ -665,6 +677,9 @@ def step_enrich() -> None:
                     print(f"  {color.ok('✓')} {color.bold(title)} updated.\n")
                     enriched += 1
                     summary.add("enrich", f"Recipe enriched: {title}")
+                    # If nutrition was updated, re-evaluate nutrition tag rules for this recipe
+                    if data.get("nutrition"):
+                        _recheck_nutrition_tags(slug, title)
                 else:
                     skipped += 1
                 break

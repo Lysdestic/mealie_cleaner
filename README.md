@@ -13,7 +13,7 @@ If you self-host Mealie and have more than a handful of recipes, you've probably
 - Tags and categories that got created by accident and now litter your filters
 - Recipes imported from the web with no description, no nutrition info, and ingredients that don't link to your shopping list
 - Foods that show up unlabeled in shopping lists, or junk entries that snuck in
-- No consistent way to know which recipes freeze well
+- No consistent way to know which recipes are high protein, low calorie, or freeze well
 
 **mealie_cleaner** is a CLI tool that fixes all of this. It talks to your Mealie instance via its API and gives you an interactive menu to clean, organise, and enrich your recipe library — with color-coded output, interactive prompts, and a session summary at the end of every run.
 
@@ -29,22 +29,24 @@ If you self-host Mealie and have more than a handful of recipes, you've probably
 - **Free-text ingredient repair** — recipes imported from the web often have plain-text ingredients with no structured food link; this runs them through Mealie's parser to fix them
 
 ### Enrichment
-- **LLM recipe enrichment** — audits every recipe against a quality standard and walks you through improving any that fall short, one at a time, using any LLM (Claude, GPT, etc.)
+- **LLM recipe enrichment** — audits every recipe against a quality standard and walks you through improving any that fall short, one at a time, using any LLM (Claude, GPT, etc.); automatically re-evaluates nutrition tag rules after each recipe is enriched
+- **Nutrition tag rules** — define threshold-based rules (e.g. protein ≥ 20g → "High Protein") that auto-tag recipes; rules persist in `userdata/nutrition_rules.json`; recipes that lose qualification are flagged for review rather than silently un-tagged
 
 ### Utilities
 - **Recipe audit** — dumps all recipes with tags, categories, ingredients, and instructions to stdout; pipe to a file and paste into an LLM to review your tagging scheme in bulk
 
 ### General
-- **Session summary** — printed at the end of every run showing every action taken, so you never have to scroll back through output
-- **Graceful Ctrl+C** — interrupting mid-run prints the summary of what completed and exits cleanly; no tracebacks
+- **Session summary** — printed at the end of every run showing every action taken
+- **Graceful Ctrl+C** — prints the summary of completed actions and exits cleanly
 - **Dry run mode** — any step can be previewed with `--dry-run` before touching anything
-- **Dynamic recipe URLs** — group slug fetched automatically from your Mealie API, so recipe links in prompts always point to the right place regardless of your instance's group name
+- **Dynamic recipe URLs** — group slug fetched automatically from your Mealie API so recipe links always point to the right place
+- **No external dependencies** — stdlib only; no pip install needed
 
 ---
 
 ## Requirements
 
-- Python 3.10+ (stdlib only — no pip installs needed)
+- Python 3.10+
 - A running Mealie instance with API access
 - A Mealie API token (`Settings → API Tokens`)
 
@@ -62,7 +64,7 @@ cp env.example .env
 
 # 2. Set up your instance data
 cp -r userdata.example userdata
-# Edit the three files in userdata/ to match your Mealie setup
+# Edit the files in userdata/ to match your Mealie setup
 ```
 
 ---
@@ -78,10 +80,10 @@ python3 mealie_suite.py --dry-run
 
 # Run a specific step directly
 python3 mealie_suite.py --step cleanup
-python3 mealie_suite.py --step apply
 python3 mealie_suite.py --step enrich
+python3 mealie_suite.py --step nutritiontags
 
-# Run all maintenance steps in sequence (2 → 3 → 4 → 5 → 6)
+# Run all maintenance steps in sequence (2 → 3 → 4 → 5 → 6 → 8)
 python3 mealie_suite.py --step all
 
 # Dump all recipes for LLM review
@@ -97,10 +99,11 @@ The menu:
   [4] Sync Tags → Categories
   [5] Food Label Cleanup
   [6] Fix Free-Text Ingredients
-  [8] Run all maintenance steps  (2 → 3 → 4 → 5 → 6)
+  [9] Run all maintenance steps  (2 → 3 → 4 → 5 → 6 → 8)
 
 ── Enrichment ───────────────────────────────────────────
   [7] LLM Recipe Enrichment
+  [8] Nutrition Tag Rules
 
 ── Utilities ────────────────────────────────────────────
   [1] Recipe Audit  (dump all recipes for LLM review)
@@ -110,7 +113,7 @@ The menu:
 
 ## Instance data
 
-Your personal data lives in `userdata/` (gitignored — never committed). Three JSON files:
+Your personal data lives in `userdata/` (gitignored — never committed). Four JSON files:
 
 ### `userdata/taxonomy.json`
 
@@ -118,8 +121,8 @@ Defines which tags and categories are canonical for your Mealie instance.
 
 ```json
 {
-  "tags": ["Main Course", "Weeknight", "Italian", "Chicken", "Oven", "Freezer"],
-  "categories": ["Dinner", "Lunch", "Breakfast", "Side Dish", "Dessert"]
+  "tags": ["Main Course", "Weeknight", "Chicken", "High Protein", "Freezer"],
+  "categories": ["Dinner", "Lunch", "Breakfast", "Side Dish"]
 }
 ```
 
@@ -133,7 +136,7 @@ When cleanup finds a non-canonical tag or category it asks interactively:
 
 ### `userdata/recipe_map.json`
 
-Maps each recipe slug to its canonical tags and categories. The slug is the last part of the recipe URL (`/g/home/r/my-recipe-slug`).
+Maps each recipe slug to its canonical tags and categories.
 
 ```json
 {
@@ -145,10 +148,9 @@ Maps each recipe slug to its canonical tags and categories. The slug is the last
 }
 ```
 
-**Key behaviours:**
-- When step 3 finds recipes not in the map, it fetches their current tags from Mealie and prompts you to confirm or change them — you pick by number, not by typing
-- Step 3 merges tags (preserves canonical tags already on recipes in Mealie) and auto-syncs the map file so it always reflects reality
-- `freetext_skip_slugs` lists recipes whose ingredient format is incompatible with the parser (e.g. section-prefixed lines like "Dough — 180g flour") — leave empty if not needed
+- Step 3 merges tags (preserves canonical tags already on recipes in Mealie) and auto-syncs this file to reflect reality
+- When step 3 finds unmapped recipes it shows their current Mealie tags and prompts you to confirm via numbered picker — no typing
+- `freetext_skip_slugs` lists recipes whose ingredient format is incompatible with the parser
 
 ### `userdata/food_labels.json`
 
@@ -158,15 +160,39 @@ Maps food names to Mealie shopping list label categories, and flags junk entries
 {
   "food_labels": {
     "chicken breast": "Poultry",
-    "olive oil": "Oils & Fats",
-    "baby spinach": "Vegetables & Greens"
+    "olive oil": "Oils & Fats"
   },
   "junk_food_ids": [],
   "junk_food_patterns": ["^---", "---$", "^\\s*$"]
 }
 ```
 
-When step 5 finds unlabeled foods, it shows a numbered menu of your Mealie labels, lets you pick by number, and saves the result automatically. You can also create a new label on the spot with `N`.
+Step 5 shows a numbered menu of your Mealie labels when assigning — no typing required. You can create a new label on the spot with `N`. Everything saves automatically.
+
+### `userdata/nutrition_rules.json`
+
+Defines rules that automatically tag recipes based on nutrition thresholds.
+
+```json
+{
+  "rules": [
+    {
+      "field": "proteinContent",
+      "operator": ">=",
+      "threshold": 20,
+      "tag": "High Protein"
+    },
+    {
+      "field": "proteinContent",
+      "operator": ">=",
+      "threshold": 35,
+      "tag": "Very High Protein"
+    }
+  ]
+}
+```
+
+Rules are managed interactively via step 8 — you rarely need to edit this file directly. Available fields: `calories`, `fatContent`, `proteinContent`, `carbohydrateContent`, `fiberContent`, `sodiumContent`, `sugarContent`. Operators: `>=` or `<=`.
 
 ---
 
@@ -187,9 +213,31 @@ Audits every recipe against a quality standard and walks you through improving a
 
 For each recipe that fails, the tool generates a prompt you copy into any LLM. Paste the JSON response back, review the preview, confirm before anything is applied. Navigation: `a` to apply, `r` to redo, `s` to skip, `q` to quit.
 
-The Freezer tag is managed automatically — added when the LLM confirms a dish freezes well, removed if a negative assessment is found on a previously-tagged recipe.
+After each recipe is enriched, nutrition tag rules are automatically re-evaluated for that recipe — so if a recipe just got protein data added and now qualifies for "High Protein", the tag is applied immediately without needing a separate run of step 8.
 
-A permanent skip list (`ENRICH_SKIP_SLUGS` in `steps/enrich.py`) lets you exclude joke or placeholder recipes from ever being audited.
+---
+
+## Nutrition tag rules (step 8)
+
+Define threshold-based rules that auto-tag recipes based on their nutrition data.
+
+```
+▶ STEP 8: NUTRITION TAG RULES
+
+  Current rules:
+   1. Protein (g) ≥ 20  →  tag 'High Protein'
+   2. Protein (g) ≥ 35  →  tag 'Very High Protein'
+
+  [a] Run all rules now
+  [r] Add a new rule
+  [d] Delete a rule
+  [0] Back to menu
+```
+
+- New tags are added to `taxonomy.json` and created in Mealie automatically when a rule is created
+- Recipes with no nutrition data are skipped silently
+- Recipes that have a tag but no longer meet the threshold are **flagged in the session summary** for your review — never auto-removed
+- Step 8 runs automatically at the end of the run-all sequence (step 9)
 
 ---
 
@@ -216,12 +264,14 @@ mealie_cleaner/
 ├── .env                     # your credentials (gitignored)
 ├── userdata/                # your instance data (gitignored)
 │   ├── taxonomy.json        # canonical tags and categories
-│   ├── recipe_map.json      # per-recipe tag/category assignments + freetext skip list
-│   └── food_labels.json     # food → shopping label map and junk IDs
+│   ├── recipe_map.json      # per-recipe assignments + freetext skip list
+│   ├── food_labels.json     # food → shopping label map and junk IDs
+│   └── nutrition_rules.json # threshold-based auto-tagging rules
 ├── userdata.example/        # committed templates with inline instructions
 │   ├── taxonomy.json
 │   ├── recipe_map.json
-│   └── food_labels.json
+│   ├── food_labels.json
+│   └── nutrition_rules.json
 ├── core/
 │   ├── api.py               # HTTP helpers (req, get_all)
 │   ├── config.py            # .env loading, URL/token/dry-run/group slug
@@ -229,16 +279,17 @@ mealie_cleaner/
 │   ├── summary.py           # session summary collector
 │   └── utils.py             # normalize, confirm, dry_run_banner
 ├── data/
-│   ├── __init__.py          # exports CANONICAL_TAGS, RECIPE_MAP, FREETEXT_SKIP_SLUGS, etc.
+│   ├── __init__.py          # exports CANONICAL_TAGS, RECIPE_MAP, NUTRITION_RULES, etc.
 │   └── loader.py            # reads from userdata/*.json at runtime
 └── steps/
     ├── audit.py             # step 1: dump recipes for LLM review
-    ├── cleanup.py           # step 2: interactive tag/category cleanup → auto-saves to taxonomy.json
+    ├── cleanup.py           # step 2: interactive cleanup → auto-saves to taxonomy.json
     ├── apply.py             # step 3: apply recipe map, merge tags, auto-sync map file
     ├── sync.py              # step 4: sync tags → categories
-    ├── foods.py             # step 5: numbered label picker, new label creation, auto-saves
+    ├── foods.py             # step 5: numbered label picker, new label creation
     ├── freetext.py          # step 6: fix free-text ingredients
-    └── enrich.py            # step 7: LLM quality audit and enrichment
+    ├── enrich.py            # step 7: LLM quality audit and enrichment
+    └── nutrition_tags.py    # step 8: threshold-based nutrition auto-tagging
 ```
 
 ---
@@ -247,12 +298,14 @@ mealie_cleaner/
 
 **No external dependencies.** Everything uses Python's stdlib. No `pip install`, no virtual environment, no version conflicts.
 
-**Your data stays local.** `userdata/` is gitignored. Your recipe assignments, taxonomy, and food labels never leave your machine.
+**Your data stays local.** `userdata/` is gitignored. Your recipe assignments, taxonomy, food labels, and nutrition rules never leave your machine.
 
-**Interactive by default.** Nothing destructive happens silently. Cleanup asks about each non-canonical item. Food labels use a numbered menu — no typing long names. Enrichment previews changes before applying. New recipes prompt you to confirm their tags before saving.
+**Interactive by default.** Nothing destructive happens silently. Cleanup asks about each non-canonical item individually. Food labels use a numbered menu. Enrichment previews every change before applying. New recipes prompt you to confirm their tags.
 
-**Self-maintaining data files.** `taxonomy.json` is updated automatically when you choose to keep a tag in cleanup. `recipe_map.json` is updated when you assign tags to a new recipe and when step 3 detects tags on Mealie recipes that weren't in the map. `food_labels.json` is updated when you assign a label to an unmapped food. You should rarely need to edit these files manually.
+**Self-maintaining data files.** `taxonomy.json` is updated automatically when you keep a tag in cleanup. `recipe_map.json` is synced when step 3 detects tags not in the map. `food_labels.json` is updated when you assign a label to an unmapped food. `nutrition_rules.json` is managed entirely through the step 8 interactive menu. You should rarely need to edit these files manually.
+
+**Nutrition tags stay in sync.** Rules run automatically after each enrichment session, after the run-all sequence, and on demand via step 8. Recipes that lose qualification for a tag are flagged for review rather than silently modified.
 
 **PATCH not PUT.** All recipe updates use Mealie's PATCH endpoint. PUT triggers a slug uniqueness check that causes silent failures on some Mealie versions.
 
-**Group slug is dynamic.** Recipe URLs in prompts use your actual Mealie group slug (fetched from `/api/users/self` on startup), so they work correctly regardless of whether your group is named `home`, `family`, or anything else.
+**Group slug is dynamic.** Recipe URLs in prompts use your actual Mealie group slug (fetched from `/api/users/self` on startup) so they work correctly regardless of your instance's group name.

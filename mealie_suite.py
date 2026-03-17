@@ -62,6 +62,7 @@ from core.summary import summary
 from steps       import (
     step_audit, step_cleanup, step_apply,
     step_sync, step_foods, step_freetext, step_enrich,
+    step_nutrition_tags,
 )
 from core.config import get_url
 
@@ -73,10 +74,11 @@ STEPS: dict[str, tuple[str, callable]] = {
     "sync":     ("Sync Tags → Categories  (keep filters in sync)",           step_sync),
     "foods":    ("Food Label Cleanup  (delete junk, label unlabeled foods)", step_foods),
     "freetext": ("Fix Free-Text Ingredients  (repair shopping lists)",       step_freetext),
-    "enrich":   ("LLM Recipe Enrichment  (descriptions, notes, nutrition)",  step_enrich),
+    "enrich":        ("LLM Recipe Enrichment  (descriptions, notes, nutrition)",  step_enrich),
+    "nutritiontags": ("Nutrition Tag Rules  (auto-tag by protein, calories, etc.)", step_nutrition_tags),
 }
 
-ALL_STEPS_ORDER = ["cleanup", "apply", "sync", "foods", "freetext"]
+ALL_STEPS_ORDER = ["cleanup", "apply", "sync", "foods", "freetext", "nutritiontags"]
 
 
 # ── Run all ───────────────────────────────────────────────────────
@@ -119,11 +121,12 @@ def interactive_menu() -> None:
     maintenance_steps = [(k, STEPS[k]) for k in maintenance_keys]
     for i, (key, (desc, _)) in enumerate(maintenance_steps, 2):
         print(f"  {color.cyan(f'[{i}]')} {desc}")
-    print(f"  {color.cyan('[8]')} {color.bold('Run all maintenance steps')}  {color.muted('(2 → 3 → 4 → 5 → 6)')}")
+    print(f"  {color.cyan('[9]')} {color.bold('Run all maintenance steps')}  {color.muted('(2 → 3 → 4 → 5 → 6)')}")
 
     # ── Enrichment ─────────────────────────────────────────────────
     print(f"\n  {color.bold('── Enrichment ───────────────────────────────────────────')}")
     print(f"  {color.cyan('[7]')} {STEPS['enrich'][0]}")
+    print(f"  {color.cyan('[8]')} {STEPS['nutritiontags'][0]}")
 
     # ── Utilities ──────────────────────────────────────────────────
     print(f"\n  {color.bold('── Utilities ────────────────────────────────────────────')}")
@@ -148,7 +151,7 @@ def interactive_menu() -> None:
         print("Exiting.")
         return
 
-    if choice == "8":
+    if choice == "9":
         run_all()
         return
 
@@ -161,6 +164,7 @@ def interactive_menu() -> None:
         "5": "foods",
         "6": "freetext",
         "7": "enrich",
+        "8": "nutritiontags",
     }
 
     key = choice_map.get(choice)
@@ -208,7 +212,7 @@ Step names: audit, cleanup, apply, sync, foods, freetext, enrich, all
     )
     parser.add_argument(
         "--step",
-        choices=list(STEPS.keys()) + ["all"],
+        choices=list(STEPS.keys()) + ["all", "nutritiontags"],
         help="Run a specific step directly instead of the interactive menu.",
     )
     args = parser.parse_args()
