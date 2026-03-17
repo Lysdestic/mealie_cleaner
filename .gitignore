@@ -1,0 +1,21 @@
+# Credentials — never commit
+.env
+
+# User-specific instance data — never commit
+# Copy userdata.example/ to userdata/ and edit to match your Mealie instance
+userdata/
+
+# Old-style data files (replaced by userdata/*.json) — never commit if they exist
+data/taxonomy.py
+data/recipe_map.py
+data/food_labels.py
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# Audit output files
+audit.txt
+food_audit.txt
+*.audit.txt

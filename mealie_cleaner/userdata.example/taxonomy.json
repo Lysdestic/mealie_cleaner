@@ -1,0 +1,25 @@
+{
+  "_comment": "Canonical tags and categories for your Mealie instance.",
+  "_instructions": [
+    "Copy this file to userdata/taxonomy.json and edit to match your setup.",
+    "tags: step 2 (cleanup) will DELETE any tag in Mealie not listed here.",
+    "categories: step 2 will DELETE any category not listed here.",
+    "step 3 (apply) will AUTO-CREATE anything listed here that is missing from Mealie.",
+    "Casing matters — tag names must match exactly what you want in Mealie."
+  ],
+  "tags": [
+    "Main Course", "Side Dish", "Breakfast", "Lunch", "Appetizer",
+    "Dessert", "Snack", "Sauce", "Seasoning", "Bread",
+    "Weeknight", "Quick", "Meal Prep", "Freezer", "Comfort Food",
+    "Party Food", "Game Day", "Holiday", "Winter", "Spicy",
+    "Soup", "Stew", "Pasta", "Rice", "Pizza", "Sandwich", "Wrap",
+    "Burrito", "Casserole", "Salad",
+    "Italian", "Mexican", "Asian",
+    "Beef", "Chicken", "Vegetarian",
+    "Oven", "Stovetop", "One Pot"
+  ],
+  "categories": [
+    "Breakfast", "Lunch", "Dinner", "Appetizer",
+    "Side Dish", "Dessert", "Snack", "Bread", "Sauce"
+  ]
+}
