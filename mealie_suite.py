@@ -84,9 +84,9 @@ ALL_STEPS_ORDER = ["cleanup", "apply", "sync", "foods", "freetext", "nutritionta
 # ── Run all ───────────────────────────────────────────────────────
 
 def run_all() -> None:
-    print("\n▶ RUNNING ALL STEPS IN SEQUENCE")
-    print(f"  Order: {' → '.join(ALL_STEPS_ORDER)}")
-    print("  (audit and enrich are separate — they need interactive input)\n")
+    print(f"\n{color.header('▶ RUNNING ALL MAINTENANCE')}")
+    print(f"  {color.muted('Order: ' + ' → '.join(ALL_STEPS_ORDER))}")
+    print(f"  {color.muted('Audit and LLM enrichment are not included — they require you at the keyboard.')}\n")
 
     if not is_dry_run():
         if not confirm("This will modify your Mealie instance. Continue?"):
@@ -115,29 +115,29 @@ def interactive_menu() -> None:
     mode_str = color.warn('⚠ DRY RUN — no changes will be applied') if is_dry_run() else color.ok('✓ LIVE — changes will be applied')
     print(f"  {color.label('Mode')}         : {mode_str}\n")
 
-    # ── Maintenance steps ─────────────────────────────────────────
-    print(f"  {color.bold('── Maintenance ──────────────────────────────────────────')}")
-    maintenance_keys = ["cleanup", "apply", "sync", "foods", "freetext"]
-    maintenance_steps = [(k, STEPS[k]) for k in maintenance_keys]
-    for i, (key, (desc, _)) in enumerate(maintenance_steps, 2):
-        print(f"  {color.cyan(f'[{i}]')} {desc}")
-    print(f"  {color.cyan('[9]')} {color.bold('Run all maintenance steps')}  {color.muted('(2 → 3 → 4 → 5 → 6)')}")
+    # ── Setup & Organisation ──────────────────────────────────────
+    print(f"  {color.bold('── Setup & Organisation ─────────────────────────────────')}")
+    print(f"  {color.cyan('[1]')} {STEPS['audit'][0]}")
+    print(f"  {color.muted('       Dump all recipes to a file and paste into an LLM to review tags in bulk.')}")
+    print(f"  {color.muted('       python3 mealie_suite.py --step audit > userdata/audit.txt')}")
+    print(f"  {color.muted('       NOTE: step 2 deletes any tag/category not in userdata/taxonomy.json')}")
+    print(f"  {color.cyan('[2]')} {STEPS['cleanup'][0]}")
+    print(f"  {color.cyan('[3]')} {STEPS['apply'][0]}")
+    print(f"  {color.cyan('[4]')} {STEPS['sync'][0]}")
 
-    # ── Enrichment ─────────────────────────────────────────────────
+    # ── Shopping & Ingredients ────────────────────────────────────
+    print(f"\n  {color.bold('── Shopping & Ingredients ───────────────────────────────')}")
+    print(f"  {color.cyan('[5]')} {STEPS['foods'][0]}")
+    print(f"  {color.cyan('[6]')} {STEPS['freetext'][0]}")
+
+    # ── Enrichment ────────────────────────────────────────────────
     print(f"\n  {color.bold('── Enrichment ───────────────────────────────────────────')}")
     print(f"  {color.cyan('[7]')} {STEPS['enrich'][0]}")
     print(f"  {color.cyan('[8]')} {STEPS['nutritiontags'][0]}")
 
-    # ── Utilities ──────────────────────────────────────────────────
-    print(f"\n  {color.bold('── Utilities ────────────────────────────────────────────')}")
-    print(f"  {color.cyan('[1]')} {STEPS['audit'][0]}")
-    print(f"  {color.muted('       Use when adding recipes in bulk or revisiting your tagging scheme:')}")
-    print(f"  {color.muted('       1. python3 mealie_suite.py --step audit > userdata/audit.txt')}")
-    print(f"  {color.muted('       2. Paste audit.txt into Claude — ask it to review tags/categories')}")
-    print(f"  {color.muted('       3. If Claude suggests new tags/categories, add them to userdata/taxonomy.json')}")
-    print(f"  {color.muted('       4. Paste the resulting RECIPE_MAP into userdata/recipe_map.json')}")
-    print(f"  {color.muted('       5. Run step 3 — missing tags/categories are created in Mealie automatically')}")
-    print(f"  {color.muted('       NOTE: step 2 (cleanup) deletes any tag/category not in userdata/taxonomy.json')}")
+    # ── Run All ───────────────────────────────────────────────────
+    print(f"\n  {color.bold('── Run All ──────────────────────────────────────────────')}")
+    print(f"  {color.cyan('[9]')} {color.bold('Run all maintenance')}  {color.muted('(2→3→4→5→6→8  —  no interactive steps)')}")
 
     print(f"\n  {color.muted('[0]')} Exit\n")
 
