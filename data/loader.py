@@ -53,10 +53,20 @@ def load_taxonomy() -> tuple[set[str], set[str]]:
     return tags, categories
 
 
-def load_recipe_map() -> dict[str, dict[str, list[str]]]:
-    """Returns RECIPE_MAP: {slug: {tags: [...], categories: [...]}}."""
+def load_recipe_map() -> tuple[dict[str, dict[str, list[str]]], set[str]]:
+    """Returns (RECIPE_MAP, FREETEXT_SKIP_SLUGS).
+    
+    RECIPE_MAP: {slug: {tags: [...], categories: [...]}}
+    FREETEXT_SKIP_SLUGS: set of slugs to skip in the freetext ingredient parser.
+    
+    Add slugs to the "freetext_skip_slugs" key in userdata/recipe_map.json
+    for recipes whose ingredient format is incompatible with the parser.
+    """
     data = _load("recipe_map.json")
-    return data
+    skip = set(data.pop("freetext_skip_slugs", []))
+    # Remove non-recipe keys
+    recipe_map = {k: v for k, v in data.items() if not k.startswith("_")}
+    return recipe_map, skip
 
 
 def load_food_labels() -> tuple[dict[str, str], list[str], list[str]]:

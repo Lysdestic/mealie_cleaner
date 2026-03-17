@@ -19,13 +19,12 @@ import sys
 import time
 
 from core import req, get_all, dry_run_banner, is_dry_run, summary
+from data import FREETEXT_SKIP_SLUGS
 
-# ── Recipes excluded from parsing ────────────────────────────────
-# These use section-prefixed ingredient lines (e.g. "Dough — 180g beer")
-# that the parser misidentifies as a food named "Dough" or "Sauce".
-SKIP_SLUGS: set[str] = {
-    "cast-iron-pan-pizza-brian-lagerstrom-style",
-}
+# SKIP_SLUGS is loaded from userdata/recipe_map.json ("freetext_skip_slugs" key)
+# Add slugs there for any recipe whose ingredient format is parser-incompatible
+# (e.g. "Dough — 180g flour" style prefixes that confuse the parser)
+SKIP_SLUGS = FREETEXT_SKIP_SLUGS
 
 # ── Pre-parse rewrites ────────────────────────────────────────────
 # Applied to ingredient display text before sending to the parser.
@@ -239,6 +238,7 @@ def step_freetext() -> None:
     print(f"  Already had food : {total_ok}")
     print(f"  Errors           : {total_errors}")
     summary.add("freetext", f"Total: {total_fixed} fixed, {total_skipped} skipped, {total_errors} errors")
-    print()
-    print("  NOTE: Cast Iron Pan Pizza was skipped — its 'Dough — X' / 'Sauce — X'")
-    print("  format confuses the parser. Fix it manually in the Mealie recipe editor.")
+    if SKIP_SLUGS:
+        print()
+        print(f"  NOTE: {len(SKIP_SLUGS)} recipe(s) were skipped (parser-incompatible format).")
+        print(f"  To remove from skip list, edit 'freetext_skip_slugs' in userdata/recipe_map.json")

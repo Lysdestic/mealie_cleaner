@@ -1,23 +1,45 @@
 {
   "_comment": "Per-recipe tag and category assignments.",
   "_instructions": [
-    "Copy this file to userdata/recipe_map.json and edit to match your recipes.",
-    "Keys are recipe slugs (from the Mealie URL, e.g. /g/home/r/my-recipe-slug).",
+    "Keys are recipe slugs from Mealie URLs: /g/home/r/my-recipe-slug",
     "All tags must exist in userdata/taxonomy.json.",
     "All categories must exist in userdata/taxonomy.json.",
-    "Run step 1 (audit) to dump all your recipe slugs for easy reference.",
-    "Run step 3 (apply) to push changes — missing tags/categories are auto-created."
+    "Run step 1 (audit) to dump all slugs. Run step 3 (apply) to push changes.",
+    "freetext_skip_slugs: list of slugs to skip in step 6 (free-text ingredient parser).",
+    "  Use this for recipes with section-prefixed ingredients like 'Dough \u2014 180g flour'",
+    "  that confuse the parser. Leave empty if not needed."
   ],
   "my-pasta-recipe": {
-    "tags": ["Main Course", "Pasta", "Italian", "Weeknight"],
-    "categories": ["Dinner"]
+    "tags": [
+      "Main Course",
+      "Pasta",
+      "Italian",
+      "Weeknight"
+    ],
+    "categories": [
+      "Dinner"
+    ]
   },
   "my-chicken-dish": {
-    "tags": ["Main Course", "Chicken", "Oven", "Meal Prep"],
-    "categories": ["Dinner"]
+    "tags": [
+      "Main Course",
+      "Chicken",
+      "Oven",
+      "Meal Prep"
+    ],
+    "categories": [
+      "Dinner"
+    ]
   },
   "my-breakfast-item": {
-    "tags": ["Breakfast", "Quick", "Stovetop"],
-    "categories": ["Breakfast"]
-  }
+    "tags": [
+      "Breakfast",
+      "Quick",
+      "Stovetop"
+    ],
+    "categories": [
+      "Breakfast"
+    ]
+  },
+  "freetext_skip_slugs": []
 }

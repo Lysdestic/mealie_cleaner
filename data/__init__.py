@@ -8,11 +8,11 @@ hardcoded here. See data/loader.py for details.
 from .loader import load_taxonomy, load_recipe_map, load_food_labels
 
 CANONICAL_TAGS, KEEP_CATEGORIES = load_taxonomy()
-RECIPE_MAP                       = load_recipe_map()
+RECIPE_MAP, FREETEXT_SKIP_SLUGS = load_recipe_map()
 FOOD_LABELS, JUNK_FOOD_IDS, JUNK_FOOD_PATTERNS = load_food_labels()
 
 __all__ = [
     "CANONICAL_TAGS", "KEEP_CATEGORIES",
-    "RECIPE_MAP",
+    "RECIPE_MAP", "FREETEXT_SKIP_SLUGS",
     "FOOD_LABELS", "JUNK_FOOD_IDS", "JUNK_FOOD_PATTERNS",
 ]
