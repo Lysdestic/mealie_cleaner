@@ -576,11 +576,11 @@ def step_enrich() -> None:
     print(f"  {color.muted(f'Auditing {len(recipes_sorted)} recipes...')}")
     candidates: list[tuple[dict, dict, RecipeAudit]] = []
     for summary in recipes_sorted:
-        slug = summary["slug"]
+        slug = recipe["slug"]
         try:
             detail = req("GET", f"/api/recipes/{slug}")
         except Exception as e:
-            print(f"  {color.error('ERROR')} fetching {summary['name']}: {e}", file=sys.stderr)
+            print(f"  {color.error('ERROR')} fetching {recipe['name']}: {e}", file=sys.stderr)
             continue
         if slug in ENRICH_SKIP_SLUGS:
             continue
@@ -598,8 +598,8 @@ def step_enrich() -> None:
     enriched = skipped = 0
 
     for idx, (summary, detail, audit) in enumerate(candidates, 1):
-        title = summary["name"]
-        slug  = summary["slug"]
+        title = recipe["name"]
+        slug  = recipe["slug"]
 
         url = _recipe_url(slug)
         print(f"\n{color.muted('─' * 60)}")

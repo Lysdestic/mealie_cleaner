@@ -23,52 +23,99 @@ _FOOD_LABELS = os.path.join(_ROOT, "userdata", "food_labels.json")
 
 def _prompt_food_labels(unmapped: list[str]) -> None:
     """Interactively assign labels to unmapped foods and save to food_labels.json."""
+    from core import color
+
     try:
         with open(_FOOD_LABELS, encoding="utf-8") as f:
             data = json.load(f)
     except Exception as e:
-        print(f"  WARNING: could not read food_labels.json: {e}", file=sys.stderr)
+        print(f"  {color.error('WARNING')}: could not read food_labels.json: {e}", file=sys.stderr)
         return
 
     labels = data.get("food_labels", {})
 
-    # Show available labels for reference
-    from core import req, get_all
+    # Fetch current labels from Mealie
     try:
         all_labels = get_all("/api/groups/labels")
         label_names = sorted(l["name"] for l in all_labels)
-        print(f"\n  Available labels: {label_names}")
     except Exception:
-        pass
+        label_names = []
 
-    print(f"\n  {len(unmapped)} food(s) with no label — assign now.")
-    print(f"  (Press Enter to skip a food and leave it unlabeled)\n")
+    def _print_label_menu(label_names: list[str]) -> None:
+        print(f"\n  {color.bold('Available labels:')}")
+        cols = 3
+        for i, name in enumerate(label_names, 1):
+            end = "\n" if i % cols == 0 else ""
+            print(f"  {color.cyan(str(i).rjust(3))}. {name:<30}", end=end)
+        print()
+        print(f"  {color.cyan('  N')}. Create a new label")
+        print(f"  {color.cyan('  0')}. Skip (leave unlabeled)\n")
+
+    print(f"\n  {color.bold(color.bright_cyan(f'{len(unmapped)} food(s) with no label'))} — assign now.")
+
+    _print_label_menu(label_names)
 
     updated = []
     for name in unmapped:
         if name in labels and labels[name]:
             continue
+
+        print(f"  {color.bold('Food:')} {color.bright_yellow(repr(name))}")
         try:
-            label = input(f"    Label for {name!r}: ").strip()
+            raw = input(f"    Pick number, N to create new, or 0 to skip: ").strip()
         except (KeyboardInterrupt, EOFError):
             print()
             break
-        if label:
-            labels[name] = label
-            updated.append(name)
-            print(f"    ✓ Saved")
+
+        if raw == "0" or not raw:
+            print(f"    {color.muted('Skipped')}\n")
+            continue
+
+        if raw.lower() == "n":
+            try:
+                new_label_name = input("    New label name: ").strip()
+            except (KeyboardInterrupt, EOFError):
+                print()
+                break
+            if new_label_name:
+                try:
+                    req("POST", "/api/groups/labels", {"name": new_label_name})
+                    label_names = sorted(label_names + [new_label_name])
+                    label_names_set = sorted(set(label_names))
+                    label_names = label_names_set
+                    chosen_label = new_label_name
+                    print(f"    {color.ok(f'Created label: {new_label_name!r}')}")
+                    _print_label_menu(label_names)
+                except Exception as e:
+                    print(f"    {color.error(f'ERROR creating label: {e}')}")
+                    continue
+            else:
+                print(f"    {color.muted('Skipped')}\n")
+                continue
+        elif raw.isdigit():
+            idx = int(raw) - 1
+            if 0 <= idx < len(label_names):
+                chosen_label = label_names[idx]
+            else:
+                print(f"    {color.warn('Invalid number — skipped')}\n")
+                continue
         else:
-            print(f"    Skipped")
+            # Treat as a direct name entry
+            chosen_label = raw
+
+        labels[name] = chosen_label
+        updated.append(name)
+        print(f"    {color.ok('✓')} {repr(name)} → {color.bright_yellow(chosen_label)}\n")
 
     if updated:
         data["food_labels"] = labels
         try:
             with open(_FOOD_LABELS, "w", encoding="utf-8") as f:
                 json.dump(data, f, indent=2)
-            print(f"\n  userdata/food_labels.json updated ({len(updated)} food(s) labeled).")
-            print(f"  Run step 5 again to apply the new labels.")
+            print(f"  {color.ok('✓')} userdata/food_labels.json updated ({len(updated)} food(s) labeled).")
+            print(f"  {color.muted('Run step 5 again to apply the new labels.')}")
         except Exception as e:
-            print(f"  WARNING: could not write food_labels.json: {e}", file=sys.stderr)
+            print(f"  {color.error('WARNING')}: could not write food_labels.json: {e}", file=sys.stderr)
 
 
 def _is_junk(name: str) -> bool:

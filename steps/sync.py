@@ -24,9 +24,9 @@ def step_sync() -> None:
     recipes = get_all("/api/recipes")
     updated = skipped = errors = 0
 
-    for summary in sorted(recipes, key=lambda r: r["name"].lower()):
-        title = summary["name"]
-        slug  = summary["slug"]
+    for recipe in sorted(recipes, key=lambda r: r["name"].lower()):
+        title = recipe["name"]
+        slug  = recipe["slug"]
 
         try:
             detail = req("GET", f"/api/recipes/{slug}")

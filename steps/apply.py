@@ -36,17 +36,59 @@ def _prompt_recipe_map(stubs: list[tuple[str, str]]) -> None:
     # Load canonical sets for validation
     from data import CANONICAL_TAGS, KEEP_CATEGORIES
 
-    print(f"\n  {len(stubs)} recipe(s) not in map — review and confirm tags/categories.")
-    print(f"  Current tags from Mealie are shown as defaults — press Enter to accept.")
-    print(f"\n  Available tags: {sorted(CANONICAL_TAGS)}")
-    print(f"  Available categories: {sorted(KEEP_CATEGORIES)}\n")
+    from core import color
+
+    tag_list  = sorted(CANONICAL_TAGS)
+    cat_list  = sorted(KEEP_CATEGORIES)
+
+    def _print_numbered(label: str, items: list[str], cols: int = 4) -> None:
+        print(f"\n  {color.bold(label)}")
+        for i, item in enumerate(items, 1):
+            entry = f"  {color.cyan(str(i).rjust(2))}. {item}"
+            print(entry)
+        print()
+
+    def _pick_from_list(prompt: str, items: list[str], current: list[str]) -> list[str]:
+        """Let user pick by number, comma-separated. Enter = keep current."""
+        current_nums = []
+        for c in current:
+            if c in items:
+                current_nums.append(str(items.index(c) + 1))
+        default_str = ", ".join(current_nums) if current_nums else ""
+        hint = f" [{color.muted(default_str)}]" if default_str else ""
+        try:
+            raw = input(f"    {prompt}{hint}: ").strip()
+        except (KeyboardInterrupt, EOFError):
+            print()
+            return current
+        if not raw:
+            return current
+        chosen = []
+        for part in raw.split(","):
+            part = part.strip()
+            if part.isdigit():
+                idx = int(part) - 1
+                if 0 <= idx < len(items):
+                    chosen.append(items[idx])
+                else:
+                    print(f"    {color.warn(f'Ignoring out-of-range number: {part}')}")
+            else:
+                # Allow typing a name directly too
+                if part:
+                    chosen.append(part)
+        return chosen
+
+    print(f"\n  {color.bold(color.bright_cyan(f'{len(stubs)} recipe(s) not in map'))} — review and confirm tags/categories.")
+    print(f"  {color.muted('Enter numbers (comma-separated) to select. Press Enter to accept current values.')}")
+
+    _print_numbered("Available tags:", tag_list)
+    _print_numbered("Available categories:", cat_list)
 
     updated = []
     for title, slug in stubs:
         if slug in data:
             continue
 
-        # Fetch current tags and categories from Mealie
         current_tags: list[str] = []
         current_cats: list[str] = []
         try:
@@ -56,37 +98,25 @@ def _prompt_recipe_map(stubs: list[tuple[str, str]]) -> None:
         except Exception:
             pass
 
-        print(f"  ── {title}  ({slug})")
+        print(f"  {color.bold(color.bright_cyan('──'))} {color.bold(title)}  {color.muted(f'({slug})')}")
         if current_tags:
-            print(f"     Current tags      : {current_tags}")
+            print(f"     {color.label('Current tags')}      : {color.muted(str(current_tags))}")
         if current_cats:
-            print(f"     Current categories: {current_cats}")
+            print(f"     {color.label('Current categories')}: {color.muted(str(current_cats))}")
 
-        default_tags = ", ".join(current_tags)
-        default_cats = ", ".join(current_cats)
+        tags = _pick_from_list("Tags (numbers or names)", tag_list, current_tags)
+        cats = _pick_from_list("Categories (numbers or names)", cat_list, current_cats)
 
-        try:
-            raw_tags = input(f"    Tags [{default_tags}]: ").strip()
-            raw_cats = input(f"    Categories [{default_cats}]: ").strip()
-        except (KeyboardInterrupt, EOFError):
-            print()
-            break
-
-        # Use current values as default if Enter pressed
-        tags = [t.strip() for t in raw_tags.split(",") if t.strip()] if raw_tags else current_tags
-        cats = [c.strip() for c in raw_cats.split(",") if c.strip()] if raw_cats else current_cats
-
-        # Warn about unknown values but still save
         for t in tags:
             if t not in CANONICAL_TAGS:
-                print(f"    WARNING: {t!r} not in taxonomy — add it to userdata/taxonomy.json")
+                print(f"    {color.warn(f'WARNING: {t!r} not in taxonomy — add to userdata/taxonomy.json')}")
         for c in cats:
             if c not in KEEP_CATEGORIES:
-                print(f"    WARNING: {c!r} not in taxonomy — add it to userdata/taxonomy.json")
+                print(f"    {color.warn(f'WARNING: {c!r} not in taxonomy — add to userdata/taxonomy.json')}")
 
         data[slug] = {"tags": tags, "categories": cats}
         updated.append(title)
-        print(f"    ✓ Saved")
+        print(f"    {color.ok('✓ Saved')}\n")
 
     if updated:
         try:
@@ -209,9 +239,9 @@ def step_apply() -> None:
     updated = errors = 0
     not_in_map = []
 
-    for summary in sorted(all_recipes, key=lambda r: r["name"].lower()):
-        title = summary["name"]
-        slug  = summary["slug"]
+    for recipe in sorted(all_recipes, key=lambda r: r["name"].lower()):
+        title = recipe["name"]
+        slug  = recipe["slug"]
 
         if slug not in RECIPE_MAP:
             not_in_map.append((title, slug))

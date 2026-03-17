@@ -133,9 +133,9 @@ def step_freetext() -> None:
     recipes = get_all("/api/recipes")
     total_fixed = total_skipped = total_errors = total_ok = 0
 
-    for summary in sorted(recipes, key=lambda r: r["name"].lower()):
-        title = summary["name"]
-        slug  = summary["slug"]
+    for recipe in sorted(recipes, key=lambda r: r["name"].lower()):
+        title = recipe["name"]
+        slug  = recipe["slug"]
 
         if slug in SKIP_SLUGS:
             print(f"  SKIPPED: {title}  (ingredient format not parser-compatible)")
