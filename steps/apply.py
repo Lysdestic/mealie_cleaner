@@ -236,10 +236,13 @@ def step_apply() -> None:
             print(f"  WARNING: category not found after creation attempt: {name!r}", file=sys.stderr)
         return obj
 
-    # Apply
+    # Apply — merge tags/categories rather than replace
+    # Any canonical tag already on the recipe in Mealie is preserved even if
+    # not in recipe_map.json, and recipe_map.json is updated to match.
     all_recipes = get_all("/api/recipes")
     updated = errors = 0
     not_in_map = []
+    map_updates: dict[str, dict] = {}  # slug → updated entry to write back
 
     for recipe in sorted(all_recipes, key=lambda r: r["name"].lower()):
         title = recipe["name"]
@@ -249,22 +252,49 @@ def step_apply() -> None:
             not_in_map.append((title, slug))
             continue
 
+        # Fetch full recipe to get current tags/categories from Mealie
+        try:
+            detail = req("GET", f"/api/recipes/{slug}")
+        except Exception as e:
+            print(f"  ✗ {title}: could not fetch detail: {e}", file=sys.stderr)
+            errors += 1
+            continue
+
+        current_tag_names = {t["name"] for t in detail.get("tags", [])}
+        current_cat_names = {c["name"] for c in detail.get("recipeCategory", [])}
+
         entry = RECIPE_MAP[slug]
+        map_tag_names = set(entry["tags"])
+        map_cat_names = set(entry["categories"])
+
+        # Merge: map tags + any canonical tags already on the recipe
+        merged_tags = map_tag_names | (current_tag_names & CANONICAL_TAGS)
+        merged_cats = map_cat_names | (current_cat_names & KEEP_CATEGORIES)
+
+        # If Mealie had extra canonical tags not in the map, update the map
+        if merged_tags != map_tag_names or merged_cats != map_cat_names:
+            map_updates[slug] = {
+                "tags": sorted(merged_tags),
+                "categories": sorted(merged_cats),
+            }
+
         tag_payload = [
             {"id": o["id"], "name": o["name"], "slug": o["slug"]}
-            for name in entry["tags"]
+            for name in merged_tags
             if (o := resolve_tag(name))
         ]
         cat_payload = [
             {"id": o["id"], "name": o["name"], "slug": o["slug"]}
-            for name in entry["categories"]
+            for name in merged_cats
             if (o := resolve_cat(name))
         ]
 
         if is_dry_run():
             print(f"  {title}")
-            print(f"    tags       : {entry['tags']}")
-            print(f"    categories : {entry['categories']}")
+            print(f"    tags       : {sorted(merged_tags)}")
+            print(f"    categories : {sorted(merged_cats)}")
+            if merged_tags != map_tag_names or merged_cats != map_cat_names:
+                print(f"    (recipe_map.json would be updated to match)")
             updated += 1
             continue
 
@@ -279,6 +309,21 @@ def step_apply() -> None:
         except Exception as e:
             print(f"  ✗ {title}: {e}", file=sys.stderr)
             errors += 1
+
+    # Write any map updates back to recipe_map.json
+    if map_updates and not is_dry_run():
+        try:
+            with open(_RECIPE_MAP, encoding="utf-8") as f:
+                map_data = json.load(f)
+            for slug, entry in map_updates.items():
+                if slug in map_data:
+                    map_data[slug] = entry
+            with open(_RECIPE_MAP, "w", encoding="utf-8") as f:
+                json.dump(map_data, f, indent=2)
+            print(f"\n  recipe_map.json updated — {len(map_updates)} recipe(s) synced with Mealie tags.")
+            summary.add("apply", f"recipe_map.json synced: {len(map_updates)} recipe(s) updated")
+        except Exception as e:
+            print(f"  WARNING: could not update recipe_map.json: {e}", file=sys.stderr)
 
     print(f"\n✓ Apply complete.")
     print(f"  Updated : {updated}")
