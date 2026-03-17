@@ -67,11 +67,26 @@ def _prompt_food_labels(unmapped: list[str]) -> None:
             print()
             break
 
-        if raw == "0" or not raw:
+        # Validate input — must be a number, exactly "n", or "0"
+        # Reject anything mixed like "25N"
+        if not raw:
             print(f"    {color.muted('Skipped')}\n")
             continue
 
-        if raw.lower() == "n":
+        raw_lower = raw.lower()
+        is_number = raw.isdigit()
+        is_skip   = raw == "0"
+        is_new    = raw_lower == "n"
+
+        if not is_number and not is_skip and not is_new:
+            print(f"    {color.warn(f'Invalid input {raw!r} — enter a number, N, or 0')}\n")
+            continue
+
+        if is_skip:
+            print(f"    {color.muted('Skipped')}\n")
+            continue
+
+        if is_new:
             try:
                 new_label_name = input("    New label name: ").strip()
             except (KeyboardInterrupt, EOFError):
