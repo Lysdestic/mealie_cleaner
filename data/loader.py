@@ -76,3 +76,24 @@ def load_food_labels() -> tuple[dict[str, str], list[str], list[str]]:
     junk_ids = data.get("junk_food_ids", [])
     patterns = data.get("junk_food_patterns", [r"^---", r"---$", r"^\s*$", r"^-+\s*$"])
     return labels, junk_ids, patterns
+
+
+def load_nutrition_rules() -> list[dict]:
+    """Returns list of nutrition tag rules.
+    
+    Each rule: {field, operator, threshold, tag}
+    Creates userdata/nutrition_rules.json from example if missing.
+    """
+    import shutil
+    path = os.path.join(_USERDATA, "nutrition_rules.json")
+    if not os.path.isfile(path):
+        example = os.path.join(_EXAMPLE, "nutrition_rules.json")
+        if os.path.isfile(example):
+            shutil.copy(example, path)
+        else:
+            # Bootstrap empty rules file
+            import json
+            with open(path, "w") as f:
+                json.dump({"rules": []}, f, indent=2)
+    data = _load("nutrition_rules.json")
+    return data.get("rules", [])
