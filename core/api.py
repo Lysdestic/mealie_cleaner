@@ -40,6 +40,8 @@ def req(
         with urllib.request.urlopen(request, timeout=30) as resp:
             raw = resp.read().decode()
             return json.loads(raw) if raw else None
+    except KeyboardInterrupt:
+        raise  # let it propagate cleanly to the top-level handler
     except urllib.error.HTTPError as e:
         body = e.read().decode(errors="replace")
         print(f"  HTTP {e.code} on {method} {url}", file=sys.stderr)
