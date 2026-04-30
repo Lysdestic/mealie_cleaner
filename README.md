@@ -40,6 +40,7 @@ If you self-host Mealie and have more than a handful of recipes, you've probably
 - **Graceful Ctrl+C** — prints the summary of completed actions and exits cleanly; no tracebacks
 - **Dry run mode** — any step can be previewed with `--dry-run` before touching anything
 - **Dynamic recipe URLs** — group slug fetched from your Mealie API on startup so recipe links always point to the right place
+- **Native recipe API fetch tools** — list recipe `name + slug` pairs and fetch full recipe JSON by slug directly from `mealie_suite.py`
 - **No external dependencies** — stdlib only; no pip install needed
 
 ---
@@ -85,6 +86,10 @@ cp -r userdata.example userdata
 ── Enrichment ───────────────────────────────────────────
   [7] LLM Recipe Enrichment
   [8] Nutrition Tag Rules
+
+── API Utilities ───────────────────────────────────────
+  [10] Recipe List          (print recipe names and slugs)
+  [11] Recipe Fetch         (print full JSON for one or more slugs)
 
 ── Run All ──────────────────────────────────────────────
   [9] Run all maintenance  (2→3→4→5→6→8 — no interactive steps)
@@ -151,6 +156,8 @@ python3 mealie_suite.py --dry-run
 python3 mealie_suite.py --step apply
 python3 mealie_suite.py --step enrich
 python3 mealie_suite.py --step nutritiontags
+python3 mealie_suite.py --step recipelist
+python3 mealie_suite.py --step recipefetch --slugs butter-chicken taco-bowl
 
 # Run all maintenance (non-interactive steps only)
 python3 mealie_suite.py --step all
@@ -285,7 +292,8 @@ mealie_cleaner/
     ├── foods.py             # [5] numbered label picker, new label creation
     ├── freetext.py          # [6] fix free-text ingredients
     ├── enrich.py            # [7] LLM quality audit and enrichment
-    └── nutrition_tags.py    # [8] threshold-based nutrition auto-tagging
+    ├── nutrition_tags.py    # [8] threshold-based nutrition auto-tagging
+    └── fetch.py             # [10]/[11] list recipes and fetch by slug
 ```
 
 ---

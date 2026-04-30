@@ -10,14 +10,17 @@ pass --step to run a single step directly.
 
 STEPS
 ─────
-1  audit    — Dump all recipes for LLM review (pipe to a file)
-2  cleanup  — Delete non-canonical tags and categories
-3  apply    — Apply curated tags/categories from userdata/recipe_map.json
-4  sync     — Sync tags → categories (keep filters in sync)
-5  foods    — Label unlabeled foods, delete junk food entries
-6  freetext — Fix free-text ingredients so they appear in shopping lists
-7  enrich   — Interactive LLM enrichment: descriptions, notes, nutrition
-   all      — Run steps 2-6 in sequence (audit and enrich are separate)
+audit       — Dump all recipes for LLM review (pipe to a file)
+cleanup     — Delete non-canonical tags and categories
+apply       — Apply curated tags/categories from userdata/recipe_map.json
+sync        — Sync tags → categories (keep filters in sync)
+foods       — Label unlabeled foods, delete junk food entries
+freetext    — Fix free-text ingredients so they appear in shopping lists
+enrich      — Interactive LLM enrichment: descriptions, notes, nutrition
+nutritiontags — Auto-tag recipes by nutrition rules
+recipelist  — Print recipe name + slug pairs
+recipefetch — Fetch full recipe JSON for provided slugs
+all         — Run maintenance sequence (cleanup → apply → sync → foods → freetext → nutritiontags)
 
 EDITING THE DATA
 ────────────────
@@ -41,7 +44,9 @@ USAGE
   python3 mealie_suite.py --dry-run              preview mode (no changes)
   python3 mealie_suite.py --step audit           run one step directly
   python3 mealie_suite.py --step enrich          LLM enrichment session
-  python3 mealie_suite.py --step all             run steps 2-6 in sequence
+    python3 mealie_suite.py --step recipelist      list recipe names + slugs
+    python3 mealie_suite.py --step recipefetch --slugs slug-1 slug-2
+    python3 mealie_suite.py --step all             run full maintenance sequence
   python3 mealie_suite.py --step audit > out.txt pipe audit to a file
 
 SETUP
@@ -63,6 +68,7 @@ from steps       import (
     step_audit, step_cleanup, step_apply,
     step_sync, step_foods, step_freetext, step_enrich,
     step_nutrition_tags,
+    step_recipe_list, step_recipe_fetch,
 )
 from core.config import get_url
 
@@ -76,9 +82,19 @@ STEPS: dict[str, tuple[str, callable]] = {
     "freetext": ("Fix Free-Text Ingredients  (repair shopping lists)",       step_freetext),
     "enrich":        ("LLM Recipe Enrichment  (descriptions, notes, nutrition)",  step_enrich),
     "nutritiontags": ("Nutrition Tag Rules  (auto-tag by protein, calories, etc.)", step_nutrition_tags),
+    "recipelist": ("Recipe List  (print name + slug pairs)", step_recipe_list),
+    "recipefetch": ("Recipe Fetch  (print full recipe JSON by slug)", step_recipe_fetch),
 }
 
 ALL_STEPS_ORDER = ["cleanup", "apply", "sync", "foods", "freetext", "nutritiontags"]
+
+
+def run_step(step_key: str, slugs: list[str] | None = None) -> None:
+    if step_key == "recipefetch":
+        step_recipe_fetch(slugs)
+        return
+    _, fn = STEPS[step_key]
+    fn()
 
 
 # ── Run all ───────────────────────────────────────────────────────
@@ -135,6 +151,11 @@ def interactive_menu() -> None:
     print(f"  {color.cyan('[7]')} {STEPS['enrich'][0]}")
     print(f"  {color.cyan('[8]')} {STEPS['nutritiontags'][0]}")
 
+    # ── API Utilities ─────────────────────────────────────────────
+    print(f"\n  {color.bold('── API Utilities ───────────────────────────────────────')}")
+    print(f"  {color.cyan('[10]')} {STEPS['recipelist'][0]}")
+    print(f"  {color.cyan('[11]')} {STEPS['recipefetch'][0]}")
+
     # ── Run All ───────────────────────────────────────────────────
     print(f"\n  {color.bold('── Run All ──────────────────────────────────────────────')}")
     print(f"  {color.cyan('[9]')} {color.bold('Run all maintenance')}  {color.muted('(2→3→4→5→6→8  —  no interactive steps)')}")
@@ -165,6 +186,8 @@ def interactive_menu() -> None:
         "6": "freetext",
         "7": "enrich",
         "8": "nutritiontags",
+        "10": "recipelist",
+        "11": "recipefetch",
     }
 
     key = choice_map.get(choice)
@@ -172,17 +195,15 @@ def interactive_menu() -> None:
         print("Invalid option.")
         return
 
-    _, (desc, fn) = key, STEPS[key]
     desc = STEPS[key][0]
-    fn   = STEPS[key][1]
     print(f"\nRunning: {desc}")
 
-    if not is_dry_run() and key != "audit":
+    if not is_dry_run() and key not in {"audit", "recipelist", "recipefetch"}:
         if not confirm(f"Apply changes for '{desc}'?"):
             print("Aborted.")
             return
 
-    fn()
+    run_step(key)
 
 
 # ── Entry point ───────────────────────────────────────────────────
@@ -201,9 +222,11 @@ Examples:
   python3 mealie_suite.py --step cleanup --dry-run preview cleanup
   python3 mealie_suite.py --step apply             apply tag map
   python3 mealie_suite.py --step enrich            LLM enrichment session
+    python3 mealie_suite.py --step recipelist        list recipe name/slug pairs
+    python3 mealie_suite.py --step recipefetch --slugs butter-chicken taco-bowl
   python3 mealie_suite.py --step all               run steps 2-6
 
-Step names: audit, cleanup, apply, sync, foods, freetext, enrich, all
+Step names: audit, cleanup, apply, sync, foods, freetext, enrich, nutritiontags, recipelist, recipefetch, all
         """
     )
     parser.add_argument(
@@ -212,8 +235,13 @@ Step names: audit, cleanup, apply, sync, foods, freetext, enrich, all
     )
     parser.add_argument(
         "--step",
-        choices=list(STEPS.keys()) + ["all", "nutritiontags"],
+        choices=list(STEPS.keys()) + ["all"],
         help="Run a specific step directly instead of the interactive menu.",
+    )
+    parser.add_argument(
+        "--slugs",
+        nargs="+",
+        help="Recipe slugs used with --step recipefetch.",
     )
     args = parser.parse_args()
 
@@ -234,8 +262,7 @@ Step names: audit, cleanup, apply, sync, foods, freetext, enrich, all
             if args.step == "all":
                 run_all()
             else:
-                _, fn = STEPS[args.step]
-                fn()
+                run_step(args.step, args.slugs)
                 summary.print()
         else:
             interactive_menu()
